@@ -1,0 +1,40 @@
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse,HttpResponseRedirect
+from django.urls import reverse
+from .models import Post
+from .forms import PostForm
+from django.views import View
+from django.views.generic.edit import CreateView,DeleteView
+import serial,time
+
+class Preview_Todo(View):
+    def get(self, req, *args, **kwargs):
+        posts = Post.objects.all()
+        form = PostForm()
+        context = {'posts': posts, 'form': form,}
+        return render(req, 'todo/index.html', context)
+index = Preview_Todo.as_view()
+
+class Create_Todo(CreateView):
+    def post(self, req, *args, **kwargs):
+        ser = serial.Serial('/dev/ttyACM0', 9600)
+        ser.write(b"0")
+        time.sleep(5)
+        ser.write(b"1")
+        form = PostForm(req.POST)
+        form.save(commit=True)
+        return HttpResponseRedirect(reverse('index'))
+add = Create_Todo.as_view()
+
+class Delete_Todo(DeleteView):
+    def delete(self, req, id=None):
+        ser = serial.Serial('/dev/ttyACM0', 9600)
+        ser.write(b"1")
+        time.sleep(5)
+        ser.write(b"0")
+        post = get_object_or_404(Post, pk=id)
+        post.delete()
+        return HttpResponseRedirect(reverse('index'))
+delete = Delete_Todo.as_view()
+
+
